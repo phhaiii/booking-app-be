@@ -1,7 +1,7 @@
 package com.myapp.booking.services;
 
-import com.myapp.booking.dtos.reponses.AuthResponse;
-import com.myapp.booking.dtos.reponses.UserResponse;
+import com.myapp.booking.dtos.responses.AuthResponse;
+import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.LoginRequest;
 import com.myapp.booking.dtos.requests.RefreshTokenRequest;
 import com.myapp.booking.dtos.requests.RegisterRequest;

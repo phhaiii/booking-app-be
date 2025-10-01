@@ -1,7 +1,7 @@
 package com.myapp.booking.controllers;
 
-import com.myapp.booking.dtos.reponses.ApiResponse;
-import com.myapp.booking.dtos.reponses.UserResponse;
+import com.myapp.booking.dtos.responses.ApiResponse;
+import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.ChangePasswordRequest;
 import com.myapp.booking.dtos.requests.UpdateProfileRequest;
 import com.myapp.booking.services.interfaces.IUserService;

@@ -275,34 +275,40 @@ CREATE TABLE user_checklists (
                                  INDEX idx_checklist_booking (wedding_booking_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE chat_rooms (
-                            id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                            wedding_booking_id BIGINT NOT NULL,
-                            name VARCHAR(100),
-                            participants JSON,
-                            is_active BOOLEAN DEFAULT TRUE,
-                            last_message_at TIMESTAMP NULL,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-                            FOREIGN KEY (wedding_booking_id) REFERENCES wedding_bookings(id) ON DELETE CASCADE,
-                            INDEX idx_chat_booking (wedding_booking_id)
+CREATE TABLE conversations (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    wedding_booking_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    admin_id BIGINT NOT NULL,
+    last_message TEXT,
+    last_message_at TIMESTAMP NULL,
+    unread_count_user INT DEFAULT 0,
+    unread_count_admin INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (wedding_booking_id) REFERENCES wedding_bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (admin_id) REFERENCES users(id),
+    INDEX idx_conversation_booking (wedding_booking_id),
+    INDEX idx_conversation_user (user_id),
+    INDEX idx_conversation_admin (admin_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE messages (
-                          id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                          chat_room_id BIGINT NOT NULL,
-                          sender_id BIGINT NOT NULL,
-                          message_text TEXT NOT NULL,
-                          message_type ENUM('TEXT', 'IMAGE', 'FILE', 'SYSTEM') DEFAULT 'TEXT',
-                          file_url VARCHAR(255),
-                          is_read BOOLEAN DEFAULT FALSE,
-                          read_at TIMESTAMP NULL,
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-                          FOREIGN KEY (chat_room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
-                          FOREIGN KEY (sender_id) REFERENCES users(id),
-                          INDEX idx_message_room (chat_room_id),
-                          INDEX idx_message_created (created_at)
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    message_text TEXT NOT NULL,
+    message_type ENUM('TEXT', 'IMAGE', 'FILE', 'SYSTEM') DEFAULT 'TEXT',
+    file_url VARCHAR(255),
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    INDEX idx_message_conversation (conversation_id),
+    INDEX idx_message_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE reviews (
@@ -380,3 +386,8 @@ CREATE TABLE audit_logs (
                             INDEX idx_audit_created (created_at),
                             INDEX idx_audit_table (table_name, record_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO roles (role_name, description, permissions) VALUES
+('ADMIN', 'Administrator with full access', JSON_ARRAY('MANAGE_USERS', 'MANAGE_VENDORS', 'VIEW_REPORTS', 'MANAGE_SETTINGS')),
+('VENDOR', 'Vendor managing their services', JSON_ARRAY('MANAGE_OWN_SERVICES', 'VIEW_OWN_BOOKINGS', 'MANAGE_OWN_REVIEWS')),
+('CUSTOMER', 'Customer booking wedding services', JSON_ARRAY('BROWSE_SERVICES', 'MAKE_BOOKINGS', 'WRITE_REVIEWS', 'VIEW_OWN_BOOKINGS'));

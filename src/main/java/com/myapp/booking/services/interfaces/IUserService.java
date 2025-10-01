@@ -1,6 +1,6 @@
 package com.myapp.booking.services.interfaces;
 
-import com.myapp.booking.dtos.reponses.UserResponse;
+import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.ChangePasswordRequest;
 import com.myapp.booking.dtos.requests.UpdateProfileRequest;
 import org.apache.coyote.BadRequestException;

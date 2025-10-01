@@ -1,7 +1,7 @@
 package com.myapp.booking.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myapp.booking.dtos.reponses.ApiResponse;
+import com.myapp.booking.dtos.responses.ApiResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

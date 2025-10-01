@@ -1,6 +1,6 @@
 package com.myapp.booking.exceptions;
 
-import com.myapp.booking.dtos.reponses.ApiResponse;
+import com.myapp.booking.dtos.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;

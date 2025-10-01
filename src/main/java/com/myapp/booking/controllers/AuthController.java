@@ -1,11 +1,10 @@
 package com.myapp.booking.controllers;
 
-import com.myapp.booking.dtos.reponses.ApiResponse;
-import com.myapp.booking.dtos.reponses.AuthResponse;
+import com.myapp.booking.dtos.responses.ApiResponse;
+import com.myapp.booking.dtos.responses.AuthResponse;
 import com.myapp.booking.dtos.requests.LoginRequest;
 import com.myapp.booking.dtos.requests.RefreshTokenRequest;
 import com.myapp.booking.dtos.requests.RegisterRequest;
-import com.myapp.booking.services.AuthService;
 import com.myapp.booking.services.interfaces.IAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

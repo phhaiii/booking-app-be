@@ -1,4 +1,4 @@
-package com.myapp.booking.dtos.reponses;
+package com.myapp.booking.dtos.responses;
 
 import lombok.*;
 
