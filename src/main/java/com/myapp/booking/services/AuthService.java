@@ -5,6 +5,7 @@ import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.LoginRequest;
 import com.myapp.booking.dtos.requests.RefreshTokenRequest;
 import com.myapp.booking.dtos.requests.RegisterRequest;
+import com.myapp.booking.enums.RoleName;
 import com.myapp.booking.exceptions.AccountLockedException;
 import com.myapp.booking.exceptions.InvalidCredentialsException;
 import com.myapp.booking.exceptions.TokenRefreshException;
@@ -26,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDateTime;
 
@@ -58,7 +60,7 @@ public class AuthService implements IAuthService {
         }
 
         // Lấy role mặc định (CUSTOMER)
-        Role customerRole = roleRepository.findByRoleName("CUSTOMER")
+        Role customerRole = roleRepository.findByRoleName(RoleName.USER)
                 .orElseThrow(() -> new RuntimeException("Role CUSTOMER không tồn tại!"));
 
         // Tạo user mới
@@ -212,7 +214,7 @@ public class AuthService implements IAuthService {
                 .address(user.getAddress())
                 .dateOfBirth(user.getDateOfBirth())
                 .avatarUrl(user.getAvatarUrl())
-                .roleName(user.getRole().getRoleName())
+                .roleName(user.getRole().getRoleName().name())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();

@@ -37,14 +37,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // cors() deprecated
-                .csrf(csrf -> csrf.disable()) // disable CSRF
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ Public endpoints
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/app/**").permitAll()
+                        .requestMatchers("/ws/**", "/app/**").permitAll()
+
+                        // ✅ Admin only endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // ✅ Vendor endpoints
+                        .requestMatchers("/api/vendor/**").hasRole("VENDOR")
+
+                        // ✅ User endpoints
+                        .requestMatchers("/api/users/**").hasAnyRole("USER", "VENDOR", "ADMIN")
+
+                        // ✅ Protected endpoints
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -75,10 +86,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*")); // Cho phép tất cả origins (mobile app)
+        configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Allow all for dev
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

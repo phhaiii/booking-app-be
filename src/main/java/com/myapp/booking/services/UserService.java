@@ -1,8 +1,8 @@
 package com.myapp.booking.services;
 
-import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.ChangePasswordRequest;
 import com.myapp.booking.dtos.requests.UpdateProfileRequest;
+import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.exceptions.UserAlreadyExistsException;
 import com.myapp.booking.models.User;
 import com.myapp.booking.repositories.UserRepository;
@@ -48,7 +48,7 @@ public class UserService implements IUserService {
 
         // Kiểm tra số điện thoại đã tồn tại
         if (request.getPhone() != null && !request.getPhone().equals(user.getPhone())) {
-            if (userRepository.existsByPhone(request.getPhone())) {
+            if (userRepository.existsByPhone((request.getPhone()))) {
                 throw new BadRequestException("Số điện thoại đã được sử dụng");
             }
             user.setPhone(request.getPhone());
@@ -120,7 +120,9 @@ public class UserService implements IUserService {
                 .address(user.getAddress())
                 .dateOfBirth(user.getDateOfBirth())
                 .avatarUrl(user.getAvatarUrl())
-                .roleName(user.getRole().getRoleName())
+                .roleName(user.getRole() != null && user.getRole().getRoleName() != null
+                        ? user.getRole().getRoleName().name()
+                        : null)
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();

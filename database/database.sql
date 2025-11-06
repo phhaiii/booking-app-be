@@ -3,7 +3,27 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
 USE wedding_booking_app;
-
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
+DROP TABLE IF EXISTS user_checklists;
+DROP TABLE IF EXISTS checklist_templates;
+DROP TABLE IF EXISTS photography_bookings;
+DROP TABLE IF EXISTS clothing_bookings;
+DROP TABLE IF EXISTS food_bookings;
+DROP TABLE IF EXISTS wedding_bookings;
+DROP TABLE IF EXISTS photography_packages;
+DROP TABLE IF EXISTS clothing_items;
+DROP TABLE IF EXISTS food_items;
+DROP TABLE IF EXISTS food_categories;
+DROP TABLE IF EXISTS wedding_venues;
+DROP TABLE IF EXISTS password_reset_tokens;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
 CREATE TABLE roles (
                        id BIGINT PRIMARY KEY AUTO_INCREMENT,
                        role_name VARCHAR(50) UNIQUE NOT NULL,
@@ -16,7 +36,7 @@ CREATE TABLE users (
                        email VARCHAR(100) UNIQUE NOT NULL,
                        password VARCHAR(255) NOT NULL,
                        full_name VARCHAR(100) NOT NULL,
-                       phone VARCHAR(20),
+                       phone VARCHAR(10),
                        address VARCHAR(255),
                        date_of_birth DATE,
                        role_id BIGINT NOT NULL,
@@ -61,7 +81,6 @@ CREATE TABLE password_reset_tokens (
                                        is_used BOOLEAN DEFAULT FALSE,
                                        used_at TIMESTAMP NULL,
                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
                                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                                        INDEX idx_reset_token (token),
                                        INDEX idx_reset_user (user_id)
@@ -251,28 +270,19 @@ CREATE TABLE photography_bookings (
                                       INDEX idx_photo_booking_wedding (wedding_booking_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE checklist_templates (
-                                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                     name VARCHAR(100) NOT NULL,
-                                     description TEXT,
-                                     items JSON,
-                                     is_default BOOLEAN DEFAULT FALSE,
-                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE user_checklists (
-                                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                 wedding_booking_id BIGINT NOT NULL,
-                                 template_id BIGINT,
-                                 custom_items JSON,
-                                 completed_items JSON,
-                                 progress_percentage DECIMAL(5, 2) DEFAULT 0,
+CREATE TABLE checklist_items (
+                                 id VARCHAR(36) PRIMARY KEY,  -- UUID
+                                 title VARCHAR(200) NOT NULL,
+                                 description TEXT,
+                                 is_completed BOOLEAN DEFAULT FALSE,
                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                 completed_at TIMESTAMP NULL,
+                                 user_id BIGINT,  -- Link với user nếu cần
 
-                                 FOREIGN KEY (wedding_booking_id) REFERENCES wedding_bookings(id) ON DELETE CASCADE,
-                                 FOREIGN KEY (template_id) REFERENCES checklist_templates(id),
-                                 INDEX idx_checklist_booking (wedding_booking_id)
+                                 INDEX idx_user_id (user_id),
+                                 INDEX idx_is_completed (is_completed),
+                                 INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

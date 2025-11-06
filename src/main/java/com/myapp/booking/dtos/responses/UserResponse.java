@@ -20,5 +20,7 @@ public class UserResponse {
     private String avatarUrl;
     private String roleName;
     private Boolean isActive;
+    private Boolean isLocked;          // <-- thêm trường isLocked
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;   // <-- thêm trường updatedAt
 }

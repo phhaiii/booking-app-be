@@ -3,6 +3,7 @@ package com.myapp.booking.security;
 import com.myapp.booking.models.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,28 +12,34 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
-public class CustomUserDetails implements UserDetails {
+public class UserPrincipal implements UserDetails {
+
     private Long id;
+    private String fullName;
     private String email;
     private String password;
-    private String fullName;
-    private String roleName;
+    private Collection<? extends GrantedAuthority> authorities;
     private Boolean isActive;
     private Boolean isLocked;
 
-    public static CustomUserDetails build(User user) {
-        String roleStr = null;
+    public static UserPrincipal create(User user) {
+        // convert enum RoleName to String safely
+        String roleName = "USER";
         if (user.getRole() != null && user.getRole().getRoleName() != null) {
-            // convert enum to string
-            roleStr = user.getRole().getRoleName().name();
+            roleName = user.getRole().getRoleName().name();
         }
-        return new CustomUserDetails(
+
+        // Tạo authority từ role của user
+        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + roleName);
+
+        return new UserPrincipal(
                 user.getId(),
+                user.getFullName(),
                 user.getEmail(),
                 user.getPassword(),
-                user.getFullName(),
-                roleStr,
+                Collections.singletonList(authority),
                 user.getIsActive(),
                 user.getIsLocked()
         );
@@ -40,9 +47,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_" + roleName)
-        );
+        return authorities;
     }
 
     @Override
@@ -52,7 +57,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return email; // Sử dụng email làm username
     }
 
     @Override
@@ -62,7 +67,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !isLocked;
+        return isLocked == null ? true : !isLocked; // handle null
     }
 
     @Override
@@ -72,6 +77,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive;
+        return isActive != null && isActive; // Account enabled khi isActive = true
     }
 }
