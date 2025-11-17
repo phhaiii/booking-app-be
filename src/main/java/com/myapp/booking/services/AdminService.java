@@ -1,5 +1,6 @@
 package com.myapp.booking.services;
 
+import com.myapp.booking.dtos.responses.RoleResponse;
 import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.enums.RoleName;
 import com.myapp.booking.exceptions.ResourceNotFoundException;
@@ -122,18 +123,26 @@ public class AdminService implements IAdminService {
     }
 
     private UserResponse mapToUserResponse(User user) {
+        // Build role response
+        RoleResponse roleResponse = null;
+        if (user.getRole() != null) {
+            roleResponse = RoleResponse.builder()
+                    .id(user.getRole().getId())
+                    .name(user.getRole().getRoleName() != null 
+                            ? user.getRole().getRoleName().name() 
+                            : null)
+                    .build();
+        }
+        
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phone(user.getPhone())
+                .role(roleResponse)
+                .avatar(user.getAvatarUrl())
                 .address(user.getAddress())
                 .dateOfBirth(user.getDateOfBirth())
-                // use roleName builder method and convert enum to String safely
-                .roleName(user.getRole() != null && user.getRole().getRoleName() != null
-                        ? user.getRole().getRoleName().name()
-                        : null)
-                .avatarUrl(user.getAvatarUrl())
                 .isActive(user.getIsActive())
                 .isLocked(user.getIsLocked())
                 .createdAt(user.getCreatedAt())

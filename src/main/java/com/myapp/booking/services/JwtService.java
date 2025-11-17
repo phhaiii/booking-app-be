@@ -8,6 +8,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,13 +34,25 @@ public class JwtService implements IJwtService {
     @Override
     public String generateAccessToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+
+        // ✅ FIX: Lấy authorities (đã có ROLE_ prefix) từ UserDetails
+        String roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority) // ROLE_USER, ROLE_ADMIN, ROLE_VENDOR
+                .collect(Collectors.joining(","));
+
+        claims.put("roles", roles); // ✅ Thêm roles vào token
+
         // Thêm claims cho mobile app
         if (userDetails instanceof CustomUserDetails) {
             CustomUserDetails customUser = (CustomUserDetails) userDetails;
             claims.put("userId", customUser.getId());
-            claims.put("role", customUser.getRoleName());
+            claims.put("role", customUser.getRoleName()); // Giữ lại cho backward compatibility
             claims.put("fullName", customUser.getFullName());
         }
+
+        // ✅ DEBUG LOG
+        System.out.println("🔐 Generating token with roles: " + roles);
+
         return generateToken(claims, userDetails, jwtExpiration);
     }
 
@@ -106,5 +120,11 @@ public class JwtService implements IJwtService {
     public String extractRole(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("role", String.class);
+    }
+
+    // ✅ NEW: Extract roles (ROLE_USER, ROLE_ADMIN, etc.)
+    public String extractRoles(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("roles", String.class);
     }
 }

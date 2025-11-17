@@ -15,12 +15,16 @@ public class UserResponse {
     private String email;
     private String fullName;
     private String phone;
+    
+    private RoleResponse role;         // Nested role object with id and name
+    
+    private String avatar;             // Avatar URL
+
+    // Additional fields (optional)
     private String address;
     private LocalDate dateOfBirth;
-    private String avatarUrl;
-    private String roleName;
     private Boolean isActive;
-    private Boolean isLocked;          // <-- thêm trường isLocked
+    private Boolean isLocked;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;   // <-- thêm trường updatedAt
+    private LocalDateTime updatedAt;
 }

@@ -2,6 +2,7 @@ package com.myapp.booking.services;
 
 import com.myapp.booking.dtos.requests.ChangePasswordRequest;
 import com.myapp.booking.dtos.requests.UpdateProfileRequest;
+import com.myapp.booking.dtos.responses.RoleResponse;
 import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.exceptions.UserAlreadyExistsException;
 import com.myapp.booking.models.User;
@@ -112,17 +113,26 @@ public class UserService implements IUserService {
     }
 
     private UserResponse mapToUserResponse(User user) {
+        // Build role response
+        RoleResponse roleResponse = null;
+        if (user.getRole() != null) {
+            roleResponse = RoleResponse.builder()
+                    .id(user.getRole().getId())
+                    .name(user.getRole().getRoleName() != null 
+                            ? user.getRole().getRoleName().name() 
+                            : null)
+                    .build();
+        }
+        
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phone(user.getPhone())
+                .role(roleResponse)
+                .avatar(user.getAvatarUrl())
                 .address(user.getAddress())
                 .dateOfBirth(user.getDateOfBirth())
-                .avatarUrl(user.getAvatarUrl())
-                .roleName(user.getRole() != null && user.getRole().getRoleName() != null
-                        ? user.getRole().getRoleName().name()
-                        : null)
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();

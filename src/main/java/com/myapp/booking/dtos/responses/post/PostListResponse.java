@@ -2,13 +2,11 @@ package com.myapp.booking.dtos.responses.post;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.myapp.booking.models.Post;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -23,8 +21,10 @@ public class PostListResponse {
     private BigDecimal price;
     private Integer capacity;
     private String style;
-    private String thumbnailImage; // First image
+
+    private String thumbnailImage;
     private Integer imageCount;
+    private List<String> images;
     private String status;
     private Long viewCount;
     private Long likeCount;
@@ -51,6 +51,7 @@ public class PostListResponse {
                 .style(post.getStyle())
                 .thumbnailImage(post.getImages().isEmpty() ? null : post.getImages().get(0))
                 .imageCount(post.getImages().size())
+                .images(post.getImages())
                 .status(post.getStatus().name())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())

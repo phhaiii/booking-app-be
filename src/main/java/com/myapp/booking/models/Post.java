@@ -1,11 +1,7 @@
 package com.myapp.booking.models;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -26,35 +22,42 @@ public class Post {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "title", nullable = false, length = 100)
     private String title;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "description", nullable = false, length = 200)
     private String description;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "content", columnDefinition = "LONGTEXT")
     private String content;
 
-    @Column(nullable = false)
+    @Column(name = "location", length = 255)
     private String location;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @Column(name = "capacity")
     private Integer capacity;
 
-    @Column(length = 50)
+    @Column(name = "style", length = 50)
     private String style;
 
+    @Column(name = "available_slots")
+    @Builder.Default
+    private Integer availableSlots = 4; // 4 slots per day (default)
+
+    // ✅ Quan hệ OneToMany với post_images
     @ElementCollection
     @CollectionTable(name = "post_images", joinColumns = @JoinColumn(name = "post_id"))
     @Column(name = "image_url")
     @Builder.Default
     private List<String> images = new ArrayList<>();
 
+    // ✅ Quan hệ OneToMany với post_amenities
     @ElementCollection
     @CollectionTable(name = "post_amenities", joinColumns = @JoinColumn(name = "post_id"))
     @Column(name = "amenity")
@@ -70,9 +73,9 @@ public class Post {
     private Boolean enableNotifications = true;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "status", length = 20)
     @Builder.Default
-    private PostStatus status = PostStatus.PUBLISHED;
+    private PostStatus status = PostStatus.PENDING;
 
     @Column(name = "view_count", nullable = false)
     @Builder.Default
@@ -90,7 +93,7 @@ public class Post {
     @Builder.Default
     private Long bookingCount = 0L;
 
-    // Relationship with User (Vendor)
+    // ✅ Quan hệ ManyToOne với User (Vendor)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendor_id", nullable = false)
     private User vendor;
@@ -114,12 +117,21 @@ public class Post {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    // ✅ Quan hệ OneToMany với Menu
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Menu> menus = new ArrayList<>();
+
+
     // Enum for Post Status
     public enum PostStatus {
-        DRAFT,
+        PENDING,
         PUBLISHED,
-        ARCHIVED,
-        REJECTED
+        REJECTED,
+        DRAFT
     }
 
     // Helper methods
@@ -128,6 +140,10 @@ public class Post {
         if (status == PostStatus.PUBLISHED && publishedAt == null) {
             publishedAt = LocalDateTime.now();
         }
+        if (isActive == null) isActive = true;
+        if (isDeleted == null) isDeleted = false;
+        if (allowComments == null) allowComments = true;
+        if (enableNotifications == null) enableNotifications = true;
     }
 
     @PreUpdate
@@ -136,6 +152,13 @@ public class Post {
             publishedAt = LocalDateTime.now();
         }
     }
+
+    // ❌ XÓA METHOD NÀY - không cần thiết
+    // public void setVendorFromPost() {
+    //     if (this.post != null && this.post.getVendor() != null) {
+    //         this.vendor = this.post.getVendor();
+    //     }
+    // }
 
     public void incrementViewCount() {
         this.viewCount++;
@@ -163,5 +186,9 @@ public class Post {
 
     public void incrementBookingCount() {
         this.bookingCount++;
+    }
+
+    public Long getVendorId() {
+        return vendor != null ? vendor.getId() : null;
     }
 }

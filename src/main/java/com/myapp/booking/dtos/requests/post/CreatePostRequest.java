@@ -1,11 +1,12 @@
 package com.myapp.booking.dtos.requests.post;
 
-import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -41,8 +42,7 @@ public class CreatePostRequest {
     private String style;
 
     @NotEmpty(message = "Phải có ít nhất 1 hình ảnh")
-    @Size(max = 10, message = "Tối đa 10 hình ảnh")
-    private List<String> images;
+    private List<MultipartFile> images;
 
     private Set<String> amenities;
 

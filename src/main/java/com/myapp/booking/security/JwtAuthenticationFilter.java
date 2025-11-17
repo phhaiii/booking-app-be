@@ -1,6 +1,9 @@
 package com.myapp.booking.security;
 
+import com.myapp.booking.models.User;
+import com.myapp.booking.repositories.UserRepository;
 import com.myapp.booking.services.JwtService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,51 +24,58 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
-        // Kiểm tra header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Lấy token từ header
-        jwt = authHeader.substring(7);
-
         try {
-            // Lấy email từ token
-            userEmail = jwtService.extractUsername(jwt);
+            final String jwt = authHeader.substring(7);
+            final String userEmail = jwtService.extractUsername(jwt);
 
-            // Nếu email tồn tại và chưa authenticated
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
-                // Validate token
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    // ✅ DEBUG: In ra roles và authorities
+                    Claims claims = jwtService.extractAllClaims(jwt);
+                    String roles = claims.get("roles", String.class);
+                    System.out.println("🔐 Token roles: " + roles);
+                    System.out.println("👤 Username: " + userEmail);
+                    System.out.println("👥 User authorities: " + userDetails.getAuthorities());
+
+                    // ✅ FIX: Tạo UserPrincipal từ User entity
+                    User user = userRepository.findByEmail(userEmail)
+                            .orElseThrow(() -> new RuntimeException("User not found: " + userEmail));
+
+                    UserPrincipal userPrincipal = UserPrincipal.create(user);
+
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userPrincipal,
+                            null,
+                            userPrincipal.getAuthorities()
                     );
+
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    System.out.println("✅ Authentication set for user ID: " + userPrincipal.getId());
+                    System.out.println("✅ User role: " + userPrincipal.getAuthorities());
                 }
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            System.err.println("❌ JWT Filter Error: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);

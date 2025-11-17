@@ -3,27 +3,6 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
 USE wedding_booking_app;
-DROP TABLE IF EXISTS audit_logs;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS reviews;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS conversations;
-DROP TABLE IF EXISTS user_checklists;
-DROP TABLE IF EXISTS checklist_templates;
-DROP TABLE IF EXISTS photography_bookings;
-DROP TABLE IF EXISTS clothing_bookings;
-DROP TABLE IF EXISTS food_bookings;
-DROP TABLE IF EXISTS wedding_bookings;
-DROP TABLE IF EXISTS photography_packages;
-DROP TABLE IF EXISTS clothing_items;
-DROP TABLE IF EXISTS food_items;
-DROP TABLE IF EXISTS food_categories;
-DROP TABLE IF EXISTS wedding_venues;
-DROP TABLE IF EXISTS password_reset_tokens;
-DROP TABLE IF EXISTS refresh_tokens;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS roles;
 CREATE TABLE roles (
                        id BIGINT PRIMARY KEY AUTO_INCREMENT,
                        role_name VARCHAR(50) UNIQUE NOT NULL,
@@ -146,82 +125,7 @@ CREATE TABLE food_items (
                             INDEX idx_food_deleted (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE clothing_items (
-                                id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                vendor_id BIGINT NOT NULL,
-                                name VARCHAR(100) NOT NULL,
-                                type ENUM('WEDDING_DRESS', 'SUIT', 'ACCESSORIES', 'AO_DAI') NOT NULL,
-                                description TEXT,
-                                size VARCHAR(20),
-                                color VARCHAR(50),
-                                brand VARCHAR(100),
-                                price DECIMAL(10, 2) NOT NULL,
-                                rental_price_per_day DECIMAL(10, 2),
-                                images JSON,
-                                is_available BOOLEAN DEFAULT TRUE,
-                                stock_quantity INT DEFAULT 1,
-                                deleted_at TIMESTAMP NULL,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                FOREIGN KEY (vendor_id) REFERENCES users(id),
-                                INDEX idx_clothing_vendor (vendor_id),
-                                INDEX idx_clothing_type (type),
-                                INDEX idx_clothing_deleted (deleted_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE photography_packages (
-                                      id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                      vendor_id BIGINT NOT NULL,
-                                      name VARCHAR(100) NOT NULL,
-                                      description TEXT,
-                                      price DECIMAL(10, 2) NOT NULL,
-                                      duration_hours INT NOT NULL,
-                                      includes JSON,
-                                      sample_images JSON,
-                                      is_available BOOLEAN DEFAULT TRUE,
-                                      is_popular BOOLEAN DEFAULT FALSE,
-                                      deleted_at TIMESTAMP NULL,
-                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                      FOREIGN KEY (vendor_id) REFERENCES users(id),
-                                      INDEX idx_photo_vendor (vendor_id),
-                                      INDEX idx_photo_deleted (deleted_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE wedding_bookings (
-                                  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                  booking_code VARCHAR(50) UNIQUE NOT NULL,
-                                  customer_id BIGINT NOT NULL,
-                                  venue_id BIGINT NOT NULL,
-                                  wedding_date DATE NOT NULL,
-                                  wedding_time TIME,
-                                  guest_count INT NOT NULL,
-                                  total_tables INT NOT NULL,
-                                  status ENUM('PENDING', 'CONFIRMED', 'DEPOSIT_PAID', 'PAID', 'CANCELLED', 'COMPLETED') DEFAULT 'PENDING',
-                                  venue_price DECIMAL(12, 2) DEFAULT 0,
-                                  food_price DECIMAL(12, 2) DEFAULT 0,
-                                  clothing_price DECIMAL(12, 2) DEFAULT 0,
-                                  photography_price DECIMAL(12, 2) DEFAULT 0,
-                                  total_amount DECIMAL(12, 2) DEFAULT 0,
-                                  deposit_amount DECIMAL(12, 2) DEFAULT 0,
-                                  paid_amount DECIMAL(12, 2) DEFAULT 0,
-                                  notes TEXT,
-                                  cancellation_reason TEXT,
-                                  cancelled_at TIMESTAMP NULL,
-                                  confirmed_at TIMESTAMP NULL,
-                                  completed_at TIMESTAMP NULL,
-                                  deleted_at TIMESTAMP NULL,
-                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                  FOREIGN KEY (customer_id) REFERENCES users(id),
-                                  FOREIGN KEY (venue_id) REFERENCES wedding_venues(id),
-                                  INDEX idx_booking_code (booking_code),
-                                  INDEX idx_booking_customer (customer_id),
-                                  INDEX idx_booking_venue (venue_id),
-                                  INDEX idx_booking_date (wedding_date),
-                                  INDEX idx_booking_status (status),
-                                  INDEX idx_booking_deleted (deleted_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE food_bookings (
                                id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -238,37 +142,6 @@ CREATE TABLE food_bookings (
                                INDEX idx_food_booking_wedding (wedding_booking_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE clothing_bookings (
-                                   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                   wedding_booking_id BIGINT NOT NULL,
-                                   clothing_item_id BIGINT NOT NULL,
-                                   rental_days INT NOT NULL,
-                                   unit_price DECIMAL(10, 2) NOT NULL,
-                                   total_price DECIMAL(10, 2) NOT NULL,
-                                   fitting_date DATETIME,
-                                   return_date DATETIME,
-                                   notes TEXT,
-                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                   FOREIGN KEY (wedding_booking_id) REFERENCES wedding_bookings(id) ON DELETE CASCADE,
-                                   FOREIGN KEY (clothing_item_id) REFERENCES clothing_items(id),
-                                   INDEX idx_clothing_booking_wedding (wedding_booking_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE photography_bookings (
-                                      id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                      wedding_booking_id BIGINT NOT NULL,
-                                      package_id BIGINT NOT NULL,
-                                      shooting_date DATETIME NOT NULL,
-                                      location VARCHAR(255),
-                                      price DECIMAL(10, 2) NOT NULL,
-                                      special_requests TEXT,
-                                      status ENUM('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED') DEFAULT 'PENDING',
-                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-                                      FOREIGN KEY (wedding_booking_id) REFERENCES wedding_bookings(id) ON DELETE CASCADE,
-                                      FOREIGN KEY (package_id) REFERENCES photography_packages(id),
-                                      INDEX idx_photo_booking_wedding (wedding_booking_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE checklist_items (
                                  id VARCHAR(36) PRIMARY KEY,  -- UUID
@@ -284,7 +157,6 @@ CREATE TABLE checklist_items (
                                  INDEX idx_is_completed (is_completed),
                                  INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 
 CREATE TABLE conversations (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -396,6 +268,156 @@ CREATE TABLE audit_logs (
                             INDEX idx_audit_created (created_at),
                             INDEX idx_audit_table (table_name, record_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS posts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    content LONGTEXT,
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    currency VARCHAR(3) DEFAULT 'VND',
+    location VARCHAR(255),
+    city VARCHAR(100),
+    district VARCHAR(100),
+    ward VARCHAR(100),
+    contact_phone VARCHAR(20),
+    contact_email VARCHAR(100),
+    thumbnail VARCHAR(500),
+    images JSON,
+    category VARCHAR(50),
+    sub_category VARCHAR(50),
+    capacity INT,
+    area DECIMAL(10, 2),
+    amenities JSON,
+    services JSON,
+    vendor_id BIGINT NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    is_featured BOOLEAN DEFAULT FALSE,
+    is_available BOOLEAN DEFAULT TRUE,
+    rating DECIMAL(2, 1) DEFAULT 0.0,
+    total_reviews INT DEFAULT 0,
+    total_bookings INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    available_from TIME,
+    available_to TIME,
+    working_days JSON,
+    available_slots INT DEFAULT 4 COMMENT 'Number of booking slots available per day',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (vendor_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_vendor_id (vendor_id),
+    INDEX idx_category (category),
+    INDEX idx_status (status),
+    FULLTEXT INDEX idx_search (title, description, location)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS bookings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    booking_code VARCHAR(50) UNIQUE NOT NULL,
+    user_id BIGINT NOT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    customer_email VARCHAR(100),
+    post_id BIGINT NOT NULL,
+    vendor_id BIGINT NOT NULL,
+    booking_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    duration_hours DECIMAL(5, 2),
+    number_of_guests INT DEFAULT 1,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    special_requests TEXT,
+    notes TEXT,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    cancelled_by BIGINT,
+    cancelled_at TIMESTAMP NULL,
+    cancellation_reason TEXT,
+    confirmed_by BIGINT,
+    confirmed_at TIMESTAMP NULL,
+    completed_at TIMESTAMP NULL,
+    rating DECIMAL(2, 1),
+    review TEXT,
+    reviewed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (vendor_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_booking_code (booking_code),
+    INDEX idx_user_id (user_id),
+    INDEX idx_vendor_id (vendor_id),
+    INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Create menu_categories table
+CREATE TABLE IF NOT EXISTS menu_categories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    parent_id BIGINT,
+    level INT DEFAULT 1,
+    icon VARCHAR(100),
+    image VARCHAR(500),
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES menu_categories(id) ON DELETE CASCADE,
+    INDEX idx_slug (slug),
+    INDEX idx_parent_id (parent_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Create menus table
+CREATE TABLE IF NOT EXISTS menus (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    vendor_id BIGINT NOT NULL,
+    post_id BIGINT,
+    category VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    unit VARCHAR(20) DEFAULT 'portion',
+    currency VARCHAR(3) DEFAULT 'VND',
+    ingredients TEXT,
+    image VARCHAR(500),
+    is_available BOOLEAN DEFAULT TRUE,
+    min_order_quantity INT DEFAULT 1,
+    max_order_quantity INT,
+    rating DECIMAL(2, 1) DEFAULT 0.0,
+    guest_per_table INT DEFAULT 10,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (vendor_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL,
+    INDEX idx_vendor_id (vendor_id),
+    INDEX idx_category (category),
+    FULLTEXT INDEX idx_search (name, description)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS booking_menus (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    booking_id BIGINT NOT NULL,
+    menu_id BIGINT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    customizations JSON,
+    special_requests TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE,
+    INDEX idx_booking_id (booking_id),
+    INDEX idx_menu_id (menu_id),
+    UNIQUE KEY unique_booking_menu (booking_id, menu_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO roles (role_name, description, permissions) VALUES
 ('ADMIN', 'Administrator with full access', JSON_ARRAY('MANAGE_USERS', 'MANAGE_VENDORS', 'VIEW_REPORTS', 'MANAGE_SETTINGS')),

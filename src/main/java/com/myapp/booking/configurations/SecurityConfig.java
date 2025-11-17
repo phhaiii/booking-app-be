@@ -1,3 +1,4 @@
+
 package com.myapp.booking.configurations;
 
 import com.myapp.booking.security.JwtAuthenticationEntryPoint;
@@ -5,11 +6,11 @@ import com.myapp.booking.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -42,9 +43,16 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Public endpoints
+                        // ✅ Public endpoints (không cần token)
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
                         .requestMatchers("/ws/**", "/app/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll() // ✅ Cho phép truy cập ảnh
+
+                        // ✅ Comment endpoints - GET public, POST/PUT/DELETE authenticated
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/comments/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/*/comments/*").authenticated()
 
                         // ✅ Admin only endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -54,6 +62,9 @@ public class SecurityConfig {
 
                         // ✅ User endpoints
                         .requestMatchers("/api/users/**").hasAnyRole("USER", "VENDOR", "ADMIN")
+
+                        // ✅ Checklists
+                        .requestMatchers("/api/checklists/**").hasAnyRole("USER", "VENDOR", "ADMIN")
 
                         // ✅ Protected endpoints
                         .anyRequest().authenticated()
@@ -87,7 +98,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Allow all for dev
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
         configuration.setAllowCredentials(true);

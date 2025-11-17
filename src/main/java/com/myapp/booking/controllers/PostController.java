@@ -9,6 +9,7 @@ import com.myapp.booking.dtos.responses.VendorStatisticsResponse;
 import com.myapp.booking.dtos.responses.post.PostListResponse;
 import com.myapp.booking.services.interfaces.IPostService;
 import com.myapp.booking.dtos.responses.ApiResponse;
+import com.myapp.booking.configurations.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,9 +23,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.*;
+
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
@@ -33,42 +43,163 @@ public class PostController {
 
     private final IPostService postService;
 
-    @PostMapping
-    @PreAuthorize("hasRole('VENDOR')")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Create new post", description = "Vendor creates a new post")
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
-            @Valid @RequestBody CreatePostRequest request,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("content") String content,
+            @RequestParam("location") String location,
+            @RequestParam("price") BigDecimal price,
+            @RequestParam("capacity") Integer capacity,
+            @RequestParam(value = "style", required = false) String style,
+            @RequestParam(value = "allowComments", defaultValue = "true") Boolean allowComments,
+            @RequestParam(value = "enableNotifications", defaultValue = "true") Boolean enableNotifications,
+            @RequestParam(value = "amenities", required = false) String amenitiesJson,
+            @RequestParam(value = "menuItems", required = false) String menuItemsJson,
+            @RequestPart(value = "images") List<MultipartFile> images,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
-        PostResponse response = postService.createPost(request, vendorId);
+        Long userId = SecurityUtils.getUserId(authentication);
+        String userRole = SecurityUtils.getUserRole(authentication);
+
+        log.info("═══════════════════════════════════════");
+        log.info("📥 RECEIVED CREATE POST REQUEST");
+        log.info("Title: {}", title);
+        log.info("Location: {}", location);
+        log.info("Images count: {}", images.size());
+        log.info("Menu items JSON: {}", menuItemsJson);
+
+        // ✅ Parse amenities JSON
+        Set<String> amenities = new HashSet<>();
+        if (amenitiesJson != null && !amenitiesJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                amenities = mapper.readValue(amenitiesJson, new TypeReference<>() {});
+            } catch (Exception e) {
+                log.error("Error parsing amenities JSON: {}", e.getMessage());
+            }
+        }
+
+        List<Map<String, Object>> menuItemsList = new ArrayList<>();
+        if (menuItemsJson != null && !menuItemsJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                menuItemsList = mapper.readValue(menuItemsJson, new TypeReference<>() {});
+                log.info("✅ Parsed {} menu items", menuItemsList.size());
+            } catch (Exception e) {
+                log.error("Error parsing menuItems JSON: {}", e.getMessage());
+            }
+        }
+
+        // ✅ Build request DTO
+        CreatePostRequest request = CreatePostRequest.builder()
+                .title(title)
+                .description(description)
+                .content(content)
+                .location(location)
+                .price(price)
+                .capacity(capacity)
+                .style(style)
+                .images(images)
+                .amenities(amenities)
+                .allowComments(allowComments)
+                .enableNotifications(enableNotifications)
+                .build();
+
+        PostResponse response = postService.createPost(request, userId);
+
+        // ✅ Create menus if provided
+        if (!menuItemsList.isEmpty()) {
+            log.info("🍽️ Creating {} menus for post {}", menuItemsList.size(), response.getId());
+            // TODO: Create menus using MenuService
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response,"Post created successfully"));
+                .body(ApiResponse.success(response, "Post created successfully by " + userRole));
     }
 
-    @PutMapping("/{postId}")
-    @PreAuthorize("hasRole('VENDOR')")
-    @Operation(summary = "Update post", description = "Vendor updates their post")
+    @PutMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
+    @Operation(summary = "Update post", description = "Vendor updates their post with optional new images")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
             @PathVariable Long postId,
-            @Valid @RequestBody UpdatePostRequest request,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "content", required = false) String content,
+            @RequestParam(value = "location", required = false) String location,
+            @RequestParam(value = "price", required = false) BigDecimal price,
+            @RequestParam(value = "capacity", required = false) Integer capacity,
+            @RequestParam(value = "style", required = false) String style,
+            @RequestParam(value = "allowComments", required = false) Boolean allowComments,
+            @RequestParam(value = "enableNotifications", required = false) Boolean enableNotifications,
+            @RequestParam(value = "amenities", required = false) String amenitiesJson,
+            @RequestParam(value = "existingImages", required = false) String existingImagesJson,
+            @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
-        PostResponse response = postService.updatePost(postId, request, vendorId);
+        Long vendorId = SecurityUtils.getUserId(authentication);
 
-        return ResponseEntity.ok(ApiResponse.success(response,"Post updated successfully"));
+        log.info("═══════════════════════════════════════");
+        log.info("📝 UPDATING POST: {}", postId);
+        log.info("Vendor ID: {}", vendorId);
+        log.info("New images count: {}", newImages != null ? newImages.size() : 0);
+
+        // Parse amenities JSON
+        Set<String> amenities = new HashSet<>();
+        if (amenitiesJson != null && !amenitiesJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                amenities = mapper.readValue(amenitiesJson, new TypeReference<>() {});
+            } catch (Exception e) {
+                log.error("Error parsing amenities JSON: {}", e.getMessage());
+            }
+        }
+
+        // Parse existing images JSON
+        List<String> existingImages = new ArrayList<>();
+        if (existingImagesJson != null && !existingImagesJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                existingImages = mapper.readValue(existingImagesJson, new TypeReference<>() {});
+                log.info("✅ Keeping {} existing images", existingImages.size());
+            } catch (Exception e) {
+                log.error("Error parsing existing images JSON: {}", e.getMessage());
+            }
+        }
+
+        // Build update request
+        UpdatePostRequest request = UpdatePostRequest.builder()
+                .title(title)
+                .description(description)
+                .content(content)
+                .location(location)
+                .price(price)
+                .capacity(capacity)
+                .style(style)
+                .amenities(amenities)
+                .allowComments(allowComments)
+                .enableNotifications(enableNotifications)
+                .existingImages(existingImages)
+                .build();
+
+        PostResponse response = postService.updatePost(postId, request, newImages, vendorId);
+
+        log.info("✅ Post updated successfully");
+        log.info("═══════════════════════════════════════");
+
+        return ResponseEntity.ok(ApiResponse.success(response, "Post updated successfully"));
     }
 
     @DeleteMapping("/{postId}")
-    @PreAuthorize("hasRole('VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Delete post", description = "Vendor deletes their post")
     public ResponseEntity<ApiResponse<Void>> deletePost(
             @PathVariable Long postId,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
+        Long vendorId = SecurityUtils.getUserId(authentication);
         postService.deletePost(postId, vendorId);
 
         return ResponseEntity.ok(ApiResponse.success(null,"Post deleted successfully" ));
@@ -103,7 +234,7 @@ public class PostController {
     }
 
     @GetMapping("/my-posts")
-    @PreAuthorize("hasRole('VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Get my posts", description = "Vendor gets their own posts")
     public ResponseEntity<ApiResponse<Page<PostListResponse>>> getMyPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -112,7 +243,7 @@ public class PostController {
             @RequestParam(defaultValue = "desc") String sortDir,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
+        Long vendorId = SecurityUtils.getUserId(authentication);
         Sort sort = sortDir.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -213,61 +344,54 @@ public class PostController {
     }
 
     @PostMapping("/{postId}/like")
-    @PreAuthorize("hasAnyRole('USER', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('USER', 'VENDOR','ADMIN')")
     @Operation(summary = "Toggle like", description = "Like or unlike a post")
     public ResponseEntity<ApiResponse<Void>> toggleLike(
             @PathVariable Long postId,
             Authentication authentication) {
 
-        Long userId = extractUserId(authentication);
+        Long userId = SecurityUtils.getUserId(authentication);
         postService.toggleLike(postId, userId);
 
         return ResponseEntity.ok(ApiResponse.success(null,"Like toggled successfully"));
     }
 
     @PatchMapping("/{postId}/status")
-    @PreAuthorize("hasRole('VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Change post status", description = "Vendor changes post status")
     public ResponseEntity<ApiResponse<PostResponse>> changePostStatus(
             @PathVariable Long postId,
             @RequestParam Post.PostStatus status,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
+        Long vendorId = SecurityUtils.getUserId(authentication);
         PostResponse response = postService.changePostStatus(postId, status, vendorId);
 
         return ResponseEntity.ok(ApiResponse.success(response,"Post status changed successfully"));
     }
 
     @GetMapping("/{postId}/statistics")
-    @PreAuthorize("hasRole('VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Get post statistics", description = "Vendor gets statistics for their post")
     public ResponseEntity<ApiResponse<PostStatisticsResponse>> getPostStatistics(
             @PathVariable Long postId,
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
+        Long vendorId = SecurityUtils.getUserId(authentication);
         PostStatisticsResponse stats = postService.getPostStatistics(postId, vendorId);
 
         return ResponseEntity.ok(ApiResponse.success(stats,"Statistics retrieved successfully"));
     }
 
     @GetMapping("/statistics/vendor")
-    @PreAuthorize("hasRole('VENDOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")
     @Operation(summary = "Get vendor statistics", description = "Vendor gets their overall statistics")
     public ResponseEntity<ApiResponse<VendorStatisticsResponse>> getVendorStatistics(
             Authentication authentication) {
 
-        Long vendorId = extractUserId(authentication);
+        Long vendorId = SecurityUtils.getUserId(authentication);
         VendorStatisticsResponse stats = postService.getVendorStatistics(vendorId);
 
         return ResponseEntity.ok(ApiResponse.success(stats,"Vendor statistics retrieved successfully"));
-    }
-
-    // Helper method to extract user ID from authentication
-    private Long extractUserId(Authentication authentication) {
-        // Assuming you have a custom UserDetails implementation
-        // Adjust this based on your actual authentication setup
-        return ((com.myapp.booking.security.CustomUserDetails) authentication.getPrincipal()).getId();
     }
 }

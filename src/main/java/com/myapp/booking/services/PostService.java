@@ -19,9 +19,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.HashSet;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -31,20 +39,31 @@ public class PostService implements IPostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
     @Override
     @Transactional
     public PostResponse createPost(CreatePostRequest request, Long vendorId) {
         log.info("Creating post for vendor: {}", vendorId);
 
-        // Validate vendor
         User vendor = userRepository.findById(vendorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found"));
 
-        if (!"VENDOR".equals(vendor.getRole())) {
-            throw new UnauthorizedException("Only vendors can create posts");
+        List<String> imageUrls = new ArrayList<>();
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            for (MultipartFile file : request.getImages()) {
+                try {
+                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+                    Path filePath = Paths.get(uploadDir, fileName);
+                    Files.createDirectories(filePath.getParent());
+                    Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                    imageUrls.add("/uploads/" + fileName); // đường dẫn public
+                } catch (IOException e) {
+                    throw new RuntimeException("Error saving image: " + file.getOriginalFilename(), e);
+                }
+            }
         }
 
-        // Create post entity
         Post post = Post.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -53,26 +72,25 @@ public class PostService implements IPostService {
                 .price(request.getPrice())
                 .capacity(request.getCapacity())
                 .style(request.getStyle())
-                .images(request.getImages())
-                .amenities(request.getAmenities() != null ? request.getAmenities() : new HashSet<>())
+                .images(imageUrls)
+                .amenities(request.getAmenities())
                 .allowComments(request.getAllowComments())
                 .enableNotifications(request.getEnableNotifications())
-                .status(Post.PostStatus.PUBLISHED)
                 .vendor(vendor)
+                .status(Post.PostStatus.PUBLISHED)
                 .isActive(true)
                 .isDeleted(false)
                 .build();
 
         Post savedPost = postRepository.save(post);
-        log.info("Post created successfully with ID: {}", savedPost.getId());
-
         return PostResponse.fromEntity(savedPost);
     }
 
     @Override
     @Transactional
-    public PostResponse updatePost(Long postId, UpdatePostRequest request, Long vendorId) {
-        log.info("Updating post: {} by vendor: {}", postId, vendorId);
+    public PostResponse updatePost(Long postId, UpdatePostRequest request, List<MultipartFile> newImages, Long vendorId) {
+        log.info("═══════════════════════════════════════");
+        log.info("📝 Updating post: {} by vendor: {}", postId, vendorId);
 
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
@@ -82,23 +100,106 @@ public class PostService implements IPostService {
             throw new UnauthorizedException("You don't have permission to update this post");
         }
 
-        // Update fields if provided
-        if (request.getTitle() != null) post.setTitle(request.getTitle());
-        if (request.getDescription() != null) post.setDescription(request.getDescription());
-        if (request.getContent() != null) post.setContent(request.getContent());
-        if (request.getLocation() != null) post.setLocation(request.getLocation());
-        if (request.getPrice() != null) post.setPrice(request.getPrice());
-        if (request.getCapacity() != null) post.setCapacity(request.getCapacity());
-        if (request.getStyle() != null) post.setStyle(request.getStyle());
-        if (request.getImages() != null) post.setImages(request.getImages());
-        if (request.getAmenities() != null) post.setAmenities(request.getAmenities());
-        if (request.getAllowComments() != null) post.setAllowComments(request.getAllowComments());
-        if (request.getEnableNotifications() != null) post.setEnableNotifications(request.getEnableNotifications());
+        // Update basic fields if provided
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+            log.info("Updated title: {}", request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            post.setDescription(request.getDescription());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+        if (request.getLocation() != null) {
+            post.setLocation(request.getLocation());
+        }
+        if (request.getPrice() != null) {
+            post.setPrice(request.getPrice());
+        }
+        if (request.getCapacity() != null) {
+            post.setCapacity(request.getCapacity());
+        }
+        if (request.getStyle() != null) {
+            post.setStyle(request.getStyle());
+        }
+        if (request.getAmenities() != null) {
+            post.setAmenities(request.getAmenities());
+        }
+        if (request.getAllowComments() != null) {
+            post.setAllowComments(request.getAllowComments());
+        }
+        if (request.getEnableNotifications() != null) {
+            post.setEnableNotifications(request.getEnableNotifications());
+        }
+
+        // Handle images update
+        List<String> finalImages = new ArrayList<>();
+
+        // Keep existing images if provided
+        if (request.getExistingImages() != null && !request.getExistingImages().isEmpty()) {
+            finalImages.addAll(request.getExistingImages());
+            log.info("✅ Keeping {} existing images", request.getExistingImages().size());
+        }
+
+        // Upload and add new images if provided
+        if (newImages != null && !newImages.isEmpty()) {
+            log.info("📤 Uploading {} new images...", newImages.size());
+            List<String> uploadedImages = uploadImages(newImages);
+            finalImages.addAll(uploadedImages);
+            log.info("✅ Uploaded {} new images", uploadedImages.size());
+        }
+
+        // Update images list
+        if (!finalImages.isEmpty()) {
+            post.setImages(finalImages);
+            log.info("📸 Total images after update: {}", finalImages.size());
+        }
 
         Post updatedPost = postRepository.save(post);
-        log.info("Post updated successfully: {}", postId);
+        log.info("✅ Post updated successfully: {}", postId);
+        log.info("═══════════════════════════════════════");
 
         return PostResponse.fromEntity(updatedPost);
+    }
+
+    // Helper method to upload images
+    private List<String> uploadImages(List<MultipartFile> images) {
+        List<String> imageUrls = new ArrayList<>();
+
+        try {
+            // Create upload directory if it doesn't exist
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            for (MultipartFile image : images) {
+                if (image.isEmpty()) {
+                    continue;
+                }
+
+                // Generate unique filename
+                String originalFilename = image.getOriginalFilename();
+                String extension = originalFilename != null && originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : "";
+                String uniqueFilename = UUID.randomUUID() + extension;
+
+                // Save file
+                Path filePath = uploadPath.resolve(uniqueFilename);
+                Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                // Add URL to list
+                imageUrls.add(uniqueFilename);
+                log.info("✅ Uploaded image: {}", uniqueFilename);
+            }
+        } catch (IOException e) {
+            log.error("❌ Error uploading images: {}", e.getMessage());
+            throw new RuntimeException("Failed to upload images: " + e.getMessage());
+        }
+
+        return imageUrls;
     }
 
     @Override

@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "wedding_venues")
@@ -86,9 +85,6 @@ public class WeddingVenues {
     @JoinColumn(name = "vendor_id", insertable = false, updatable = false)
     private User vendor;
 
-    @OneToMany(mappedBy = "venue", fetch = FetchType.LAZY)
-    private List<WeddingBooking> bookings;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -101,4 +97,3 @@ public class WeddingVenues {
 
     }
 }
-

@@ -1,6 +1,7 @@
 package com.myapp.booking.services;
 
 import com.myapp.booking.dtos.responses.AuthResponse;
+import com.myapp.booking.dtos.responses.RoleResponse;
 import com.myapp.booking.dtos.responses.UserResponse;
 import com.myapp.booking.dtos.requests.LoginRequest;
 import com.myapp.booking.dtos.requests.RefreshTokenRequest;
@@ -60,8 +61,8 @@ public class AuthService implements IAuthService {
         }
 
         // Lấy role mặc định (CUSTOMER)
-        Role customerRole = roleRepository.findByRoleName(RoleName.USER)
-                .orElseThrow(() -> new RuntimeException("Role CUSTOMER không tồn tại!"));
+        Role userRole = roleRepository.findByRoleName(RoleName.USER)
+                .orElseThrow(() -> new RuntimeException("Role USER không tồn tại!"));
 
         // Tạo user mới
         User user = User.builder()
@@ -71,7 +72,7 @@ public class AuthService implements IAuthService {
                 .phone(request.getPhone())
                 .address(request.getAddress())
                 .dateOfBirth(request.getDateOfBirth())
-                .role(customerRole)
+                .role(userRole)
                 .isActive(true)
                 .isLocked(false)
                 .failedLoginAttempts(0)
@@ -206,15 +207,26 @@ public class AuthService implements IAuthService {
 
     // Helper methods
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
+        // Build role response
+        RoleResponse roleResponse = null;
+        if (user.getRole() != null) {
+            roleResponse = RoleResponse.builder()
+                    .id(user.getRole().getId())
+                    .name(user.getRole().getRoleName() != null 
+                            ? user.getRole().getRoleName().name() 
+                            : null)
+                    .build();
+        }
+        
         UserResponse userResponse = UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phone(user.getPhone())
+                .role(roleResponse)
+                .avatar(user.getAvatarUrl())
                 .address(user.getAddress())
                 .dateOfBirth(user.getDateOfBirth())
-                .avatarUrl(user.getAvatarUrl())
-                .roleName(user.getRole().getRoleName().name())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();

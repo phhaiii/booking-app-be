@@ -1,27 +1,28 @@
 package com.myapp.booking.models;
 
+import com.myapp.booking.enums.RoleName;
 import jakarta.persistence.*;
 import lombok.*;
-import com.myapp.booking.enums.RoleName;
 
 @Entity
 @Table(name = "roles")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "role_name", unique = true, nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
+    @Column(name = "role_name", nullable = false, unique = true, length = 20)
     private RoleName roleName;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 255)
     private String description;
 
-
+    @Column(columnDefinition = "TEXT")
+    private String permissions;
 }

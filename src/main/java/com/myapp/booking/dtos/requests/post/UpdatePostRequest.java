@@ -38,6 +38,9 @@ public class UpdatePostRequest {
     @Size(max = 10, message = "Tối đa 10 hình ảnh")
     private List<String> images;
 
+    // List of existing image URLs to keep (when updating)
+    private List<String> existingImages;
+
     private Set<String> amenities;
 
     private Boolean allowComments;
