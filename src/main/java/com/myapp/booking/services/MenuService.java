@@ -89,7 +89,6 @@ public class MenuService {
 
         log.info("✅ Menu created successfully with ID: {}", savedMenu.getId());
         log.info("Price per person: {}", savedMenu.getPricePerPerson());
-        log.info("═══════════════════════════════════════");
 
         return mapToResponse(savedMenu);
     }
@@ -100,10 +99,8 @@ public class MenuService {
 
     @Transactional
     public MenuResponse updateMenu(Long menuId, UpdateMenuRequest request, Long userId) {
-        log.info("═══════════════════════════════════════");
         log.info("🔄 UPDATING MENU: {}", menuId);
         log.info("User ID: {}", userId);
-        log.info("═══════════════════════════════════════");
 
         Menu menu = menuRepository.findById(menuId)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + menuId));

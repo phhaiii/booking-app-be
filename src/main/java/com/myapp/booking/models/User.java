@@ -50,13 +50,18 @@ public class User implements UserDetails {
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
 
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
+    @Column(name = "verification_token", length = 255)
+    private String verificationToken;
+
     @Column(name = "is_active")
     private Boolean isActive = true;
 
     @Column(name = "is_locked")
     private Boolean isLocked = false;
 
-    // NEW: failed login attempts, lock/unlock time, last login
     @Column(name = "failed_login_attempts")
     private Integer failedLoginAttempts = 0;
 

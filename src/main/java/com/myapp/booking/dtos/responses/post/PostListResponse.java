@@ -7,6 +7,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -40,7 +41,37 @@ public class PostListResponse {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishedAt;
 
+    // Helper method to convert a single image filename to URL
+    private static String convertImageUrl(String image) {
+        if (image == null || image.isEmpty()) {
+            return image;
+        }
+        // If already a full URL, return as is
+        if (image.startsWith("http://") || image.startsWith("https://")) {
+            return image;
+        }
+        // If already has /uploads/ prefix, return as is
+        if (image.startsWith("/uploads/")) {
+            return image;
+        }
+        // Otherwise, add /uploads/ prefix
+        return "/uploads/" + image;
+    }
+
+    // Helper method to convert list of image filenames to URLs
+    private static List<String> convertImageUrls(List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return images;
+        }
+
+        return images.stream()
+                .map(PostListResponse::convertImageUrl)
+                .collect(Collectors.toList());
+    }
+
     public static PostListResponse fromEntity(Post post) {
+        List<String> convertedImages = convertImageUrls(post.getImages());
+
         return PostListResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -49,9 +80,9 @@ public class PostListResponse {
                 .price(post.getPrice())
                 .capacity(post.getCapacity())
                 .style(post.getStyle())
-                .thumbnailImage(post.getImages().isEmpty() ? null : post.getImages().get(0))
-                .imageCount(post.getImages().size())
-                .images(post.getImages())
+                .thumbnailImage(convertedImages.isEmpty() ? null : convertedImages.get(0))
+                .imageCount(convertedImages.size())
+                .images(convertedImages)
                 .status(post.getStatus().name())
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())

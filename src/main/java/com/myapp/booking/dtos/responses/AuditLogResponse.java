@@ -11,16 +11,17 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConversationResponse {
+public class AuditLogResponse {
     private Long id;
     private Long userId;
-    private String userName;
-    private String userAvatar;
-    private Long adminId;
-    private String adminName;
-    private String adminAvatar;
-    private String lastMessage;
-    private LocalDateTime lastMessageAt;
-    private Integer unreadCount;
+    private String userEmail;
+    private String action;
+    private String tableName;
+    private Long recordId;
+    private String oldValues;
+    private String newValues;
+    private String ipAddress;
+    private String userAgent;
     private LocalDateTime createdAt;
 }
+

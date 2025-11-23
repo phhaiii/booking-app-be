@@ -39,7 +39,7 @@ public class PostService implements IPostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    @Value("${app.upload.dir:uploads}")
+    @Value("${file.upload-dir:uploads}")
     private String uploadDir;
     @Override
     @Transactional
@@ -49,19 +49,10 @@ public class PostService implements IPostService {
         User vendor = userRepository.findById(vendorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found"));
 
+        // Upload images using the helper method for consistency
         List<String> imageUrls = new ArrayList<>();
         if (request.getImages() != null && !request.getImages().isEmpty()) {
-            for (MultipartFile file : request.getImages()) {
-                try {
-                    String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-                    Path filePath = Paths.get(uploadDir, fileName);
-                    Files.createDirectories(filePath.getParent());
-                    Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-                    imageUrls.add("/uploads/" + fileName); // đường dẫn public
-                } catch (IOException e) {
-                    throw new RuntimeException("Error saving image: " + file.getOriginalFilename(), e);
-                }
-            }
+            imageUrls = uploadImages(request.getImages());
         }
 
         Post post = Post.builder()
@@ -91,6 +82,9 @@ public class PostService implements IPostService {
     public PostResponse updatePost(Long postId, UpdatePostRequest request, List<MultipartFile> newImages, Long vendorId) {
         log.info("═══════════════════════════════════════");
         log.info("📝 Updating post: {} by vendor: {}", postId, vendorId);
+        log.info("📦 UpdatePostRequest - existingImages: {}", 
+            request.getExistingImages() != null ? request.getExistingImages().size() : 0);
+        log.info("📦 newImages parameter: {}", newImages != null ? newImages.size() : "NULL");
 
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
@@ -169,13 +163,15 @@ public class PostService implements IPostService {
 
         try {
             // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+                log.info("Created upload directory: {}", uploadPath);
             }
 
             for (MultipartFile image : images) {
                 if (image.isEmpty()) {
+                    log.warn("Skipping empty image file");
                     continue;
                 }
 
@@ -190,15 +186,21 @@ public class PostService implements IPostService {
                 Path filePath = uploadPath.resolve(uniqueFilename);
                 Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-                // Add URL to list
-                imageUrls.add(uniqueFilename);
-                log.info("✅ Uploaded image: {}", uniqueFilename);
+                // Verify file was saved
+                if (Files.exists(filePath)) {
+                    long fileSize = Files.size(filePath);
+                    log.info("✅ Uploaded image: {} (size: {} bytes) to {}", uniqueFilename, fileSize, filePath);
+                    imageUrls.add(uniqueFilename);
+                } else {
+                    log.error("❌ Failed to save image: {}", uniqueFilename);
+                }
             }
         } catch (IOException e) {
-            log.error("❌ Error uploading images: {}", e.getMessage());
+            log.error("❌ Error uploading images: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload images: " + e.getMessage());
         }
 
+        log.info("Successfully uploaded {} images", imageUrls.size());
         return imageUrls;
     }
 

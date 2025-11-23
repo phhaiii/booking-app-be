@@ -18,7 +18,7 @@ public interface IBookingService {
 
     // Status operations
     Page<BookingResponse> getBookingsByStatus(Long vendorId, String status, Pageable pageable);
-    BookingResponse confirmBooking(Long bookingId, UserPrincipal currentUser);
+    com.myapp.booking.dtos.responses.BookingConfirmResponse confirmBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse completeBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse cancelBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse rejectBooking(Long bookingId, String reason, UserPrincipal currentUser);

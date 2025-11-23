@@ -1,6 +1,7 @@
 package com.myapp.booking.exceptions;
 
 import com.myapp.booking.dtos.responses.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -9,10 +10,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -50,6 +53,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse> handleNoResourceFoundException(NoResourceFoundException ex, WebRequest request) {
+        String path = getPath(request);
+        
+        // Only log at DEBUG level for missing uploaded images to reduce log noise
+        if (path.startsWith("/uploads/")) {
+            log.debug("Missing uploaded file: {} - Full path: {}", ex.getResourcePath(), path);
+        } else {
+            log.warn("Static resource not found: {} - Full path: {}", ex.getMessage(), path);
+        }
+
+        // Return 404 instead of 500 for missing static resources
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Resource not found: " + ex.getResourcePath()));
     }
 
     // ✅ Giữ lại duy nhất hàm này cho Exception.class

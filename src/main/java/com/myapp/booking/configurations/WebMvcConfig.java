@@ -57,27 +57,20 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
 
-        // Primary: robust file URI (works cross-platform)
+        // Ensure the path ends with a separator for proper resource resolution
         String uploadLocationUri = uploadPath.toUri().toString();
         if (!uploadLocationUri.endsWith("/")) {
-            uploadLocationUri = uploadLocationUri + "/";
-        }
-
-        // Fallback: explicit "file:" + absolute path with forward slashes (Windows-safe)
-        String uploadLocationFallback = "file:" + uploadPath.toString().replace('\\', '/') + "/";
-        if (!uploadLocationFallback.endsWith("/")) {
-            uploadLocationFallback = uploadLocationFallback + "/";
+            uploadLocationUri += "/";
         }
 
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(uploadLocationUri, uploadLocationFallback)
-                .setCachePeriod(3600)
-                .resourceChain(true);
+                .addResourceLocations(uploadLocationUri)
+                .setCachePeriod(3600);
 
         System.out.println("✅ Static resources configured:");
         System.out.println("   URL Pattern: /uploads/**");
-        System.out.println("   File Location (URI): " + uploadLocationUri);
-        System.out.println("   File Location (fallback): " + uploadLocationFallback);
+        System.out.println("   File Location: " + uploadLocationUri);
+        System.out.println("   Absolute Path: " + uploadPath.toString());
     }
 
 

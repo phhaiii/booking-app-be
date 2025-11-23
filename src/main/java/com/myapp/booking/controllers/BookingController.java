@@ -45,6 +45,8 @@ public class BookingController {
             @CurrentUser UserPrincipal currentUser) {
 
         log.info("POST /api/bookings - Creating booking for user: {}", currentUser.getId());
+        log.info("🔍 Controller received - numberOfGuests: {}, specialRequests: '{}'",
+                request.getNumberOfGuests(), request.getSpecialRequests());
 
         BookingResponse booking = bookingService.createBooking(request, currentUser);
 
@@ -413,15 +415,15 @@ public class BookingController {
      */
     @PostMapping("/{id:\\d+}/confirm")
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<BookingResponse>> confirmBooking(
+    public ResponseEntity<ApiResponse<com.myapp.booking.dtos.responses.BookingConfirmResponse>> confirmBooking(
             @PathVariable Long id,
             @CurrentUser UserPrincipal currentUser) {
 
         log.info("POST /api/bookings/{}/confirm - User: {}", id, currentUser.getId());
 
-        BookingResponse booking = bookingService.confirmBooking(id, currentUser);
+        com.myapp.booking.dtos.responses.BookingConfirmResponse response = bookingService.confirmBooking(id, currentUser);
 
-        return ResponseEntity.ok(ApiResponse.success(booking, "Booking confirmed successfully"));
+        return ResponseEntity.ok(ApiResponse.success(response, "Booking confirmed successfully"));
     }
 
     /**

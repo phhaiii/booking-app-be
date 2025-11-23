@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -60,6 +61,28 @@ public class PostResponse {
         private String avatarUrl;
     }
 
+    // Helper method to convert filenames to full URLs
+    private static List<String> convertImageUrls(List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return images;
+        }
+
+        return images.stream()
+                .map(image -> {
+                    // If already a full URL, return as is
+                    if (image.startsWith("http://") || image.startsWith("https://")) {
+                        return image;
+                    }
+                    // If already has /uploads/ prefix, return as is
+                    if (image.startsWith("/uploads/")) {
+                        return image;
+                    }
+                    // Otherwise, add /uploads/ prefix
+                    return "/uploads/" + image;
+                })
+                .collect(Collectors.toList());
+    }
+
     // Static factory method
     public static PostResponse fromEntity(Post post) {
         return PostResponse.builder()
@@ -71,7 +94,7 @@ public class PostResponse {
                 .price(post.getPrice())
                 .capacity(post.getCapacity())
                 .style(post.getStyle())
-                .images(post.getImages())
+                .images(convertImageUrls(post.getImages()))
                 .amenities(post.getAmenities())
                 .allowComments(post.getAllowComments())
                 .enableNotifications(post.getEnableNotifications())

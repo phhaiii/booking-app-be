@@ -136,7 +136,7 @@ public class PostController {
             @RequestParam(value = "enableNotifications", required = false) Boolean enableNotifications,
             @RequestParam(value = "amenities", required = false) String amenitiesJson,
             @RequestParam(value = "existingImages", required = false) String existingImagesJson,
-            @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages,
+            @RequestPart(value = "images", required = false) List<MultipartFile> newImages,
             Authentication authentication) {
 
         Long vendorId = SecurityUtils.getUserId(authentication);
@@ -144,7 +144,20 @@ public class PostController {
         log.info("═══════════════════════════════════════");
         log.info("📝 UPDATING POST: {}", postId);
         log.info("Vendor ID: {}", vendorId);
+        log.info("Title: {}", title);
+        log.info("Existing images JSON: {}", existingImagesJson);
+        log.info("New images parameter: {}", newImages);
         log.info("New images count: {}", newImages != null ? newImages.size() : 0);
+
+        if (newImages != null && !newImages.isEmpty()) {
+            for (int i = 0; i < newImages.size(); i++) {
+                MultipartFile img = newImages.get(i);
+                log.info("  📎 New image {}: name={}, size={} bytes, contentType={}",
+                    i + 1, img.getOriginalFilename(), img.getSize(), img.getContentType());
+            }
+        } else {
+            log.warn("⚠️ No new images received!");
+        }
 
         // Parse amenities JSON
         Set<String> amenities = new HashSet<>();
@@ -279,82 +292,57 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(posts,"Search results retrieved successfully"));
     }
 
-    @GetMapping("/filter/price")
-    @Operation(summary = "Filter by price range", description = "Filter posts by price range")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByPrice(
-            @RequestParam BigDecimal minPrice,
-            @RequestParam BigDecimal maxPrice,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
-        Page<PostListResponse> posts = postService.filterByPriceRange(minPrice, maxPrice, pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
-    }
-
-    @GetMapping("/filter/capacity")
-    @Operation(summary = "Filter by capacity", description = "Filter posts by minimum capacity")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByCapacity(
-            @RequestParam Integer minCapacity,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("capacity").ascending());
-        Page<PostListResponse> posts = postService.filterByCapacity(minCapacity, pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
-    }
-
-    @GetMapping("/filter/style")
-    @Operation(summary = "Filter by style", description = "Filter posts by style")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByStyle(
-            @RequestParam String style,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PostListResponse> posts = postService.filterByStyle(style, pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
-    }
-
-    @GetMapping("/popular")
-    @Operation(summary = "Get popular posts", description = "Get posts sorted by view count")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getPopularPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PostListResponse> posts = postService.getPopularPosts(pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(posts,"Popular posts retrieved successfully"));
-    }
-
-    @GetMapping("/trending")
-    @Operation(summary = "Get trending posts", description = "Get posts sorted by booking count")
-    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getTrendingPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PostListResponse> posts = postService.getTrendingPosts(pageable);
-
-        return ResponseEntity.ok(ApiResponse.success(posts,"Trending posts retrieved successfully"));
-    }
-
-    @PostMapping("/{postId}/like")
-    @PreAuthorize("hasAnyRole('USER', 'VENDOR','ADMIN')")
-    @Operation(summary = "Toggle like", description = "Like or unlike a post")
-    public ResponseEntity<ApiResponse<Void>> toggleLike(
-            @PathVariable Long postId,
-            Authentication authentication) {
-
-        Long userId = SecurityUtils.getUserId(authentication);
-        postService.toggleLike(postId, userId);
-
-        return ResponseEntity.ok(ApiResponse.success(null,"Like toggled successfully"));
-    }
+//    @GetMapping("/filter/price")
+//    @Operation(summary = "Filter by price range", description = "Filter posts by price range")
+//    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByPrice(
+//            @RequestParam BigDecimal minPrice,
+//            @RequestParam BigDecimal maxPrice,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//
+//        Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
+//        Page<PostListResponse> posts = postService.filterByPriceRange(minPrice, maxPrice, pageable);
+//
+//        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
+//    }
+//
+//    @GetMapping("/filter/capacity")
+//    @Operation(summary = "Filter by capacity", description = "Filter posts by minimum capacity")
+//    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByCapacity(
+//            @RequestParam Integer minCapacity,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//
+//        Pageable pageable = PageRequest.of(page, size, Sort.by("capacity").ascending());
+//        Page<PostListResponse> posts = postService.filterByCapacity(minCapacity, pageable);
+//
+//        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
+//    }
+//
+//    @GetMapping("/filter/style")
+//    @Operation(summary = "Filter by style", description = "Filter posts by style")
+//    public ResponseEntity<ApiResponse<Page<PostListResponse>>> filterByStyle(
+//            @RequestParam String style,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//
+//        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+//        Page<PostListResponse> posts = postService.filterByStyle(style, pageable);
+//
+//        return ResponseEntity.ok(ApiResponse.success(posts,"Filtered posts retrieved successfully"));
+//    }
+//
+//    @GetMapping("/popular")
+//    @Operation(summary = "Get popular posts", description = "Get posts sorted by view count")
+//    public ResponseEntity<ApiResponse<Page<PostListResponse>>> getPopularPosts(
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size) {
+//
+//        Pageable pageable = PageRequest.of(page, size);
+//        Page<PostListResponse> posts = postService.getPopularPosts(pageable);
+//
+//        return ResponseEntity.ok(ApiResponse.success(posts,"Popular posts retrieved successfully"));
+//    }
 
     @PatchMapping("/{postId}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDOR')")

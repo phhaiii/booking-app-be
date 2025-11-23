@@ -1,10 +1,8 @@
 package com.myapp.booking.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -12,8 +10,20 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bookings")
+@Table(
+        name = "bookings",
+        indexes = {
+                @Index(name = "idx_booking_code", columnList = "booking_code"),
+                @Index(name = "idx_user_id", columnList = "user_id"),
+                @Index(name = "idx_vendor_id", columnList = "vendor_id"),
+                @Index(name = "idx_venue_id", columnList = "venue_id"),
+                @Index(name = "idx_menu_id", columnList = "menu_id"),
+                @Index(name = "idx_status", columnList = "status"),
+                @Index(name = "idx_booking_slot", columnList = "post_id, booking_date, slot_index")
+        }
+)
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Booking {
@@ -28,24 +38,26 @@ public class Booking {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "customer_name", nullable = false, length = 255)
+    private String customerName;
+
+    @Column(name = "customer_phone", nullable = false, length = 255)
+    private String customerPhone;
+
+    @Column(name = "customer_email", length = 255)
+    private String customerEmail;
+
+    @Column(name = "post_id")
+    private Long postId;
 
     @Column(name = "vendor_id", nullable = false)
     private Long vendorId;
 
-    @Column(name = "customer_name", nullable = false)
-    private String customerName;
-
-    @Column(name = "customer_phone", nullable = false)
-    private String customerPhone;
-
-    @Column(name = "customer_email")
-    private String customerEmail;
-
-    @Column(name = "post_id", nullable = false)
-    private Long postId;
-
     @Column(name = "venue_id", nullable = false)
     private Long venueId;
+
+    @Column(name = "menu_id")
+    private Long menuId;
 
     @Column(name = "booking_date", nullable = false)
     private java.sql.Date bookingDate;
@@ -57,13 +69,16 @@ public class Booking {
     private java.sql.Time endTime;
 
     @Column(name = "slot_index")
-    private Integer slotIndex;
+    private Integer slotIndex; // 0=10-12h, 1=12-14h, 2=14-16h, 3=16-18h
 
     @Column(name = "duration_hours")
     private Double durationHours;
 
     @Column(name = "number_of_guests")
-    private Integer numberOfGuests = 1;
+    private Integer numberOfGuests;
+
+    @Column(name = "guest_count")
+    private Integer guestCount;
 
     @Column(name = "number_of_tables")
     private Integer numberOfTables;
@@ -75,18 +90,19 @@ public class Booking {
     private Double totalAmount;
 
     @Column(name = "deposit_amount")
-    private Double depositAmount = 0.00;
+    private Double depositAmount;
 
     @Column(name = "discount_amount")
-    private Double discountAmount = 0.00;
+    private Double discountAmount;
 
     @Column(name = "final_amount", nullable = false)
     private Double finalAmount;
 
     @Column(name = "currency", length = 3)
+    @Builder.Default
     private String currency = "VND";
 
-    @Column(name = "additional_services", columnDefinition = "JSON")
+    @Column(name = "additional_services", columnDefinition = "TEXT")
     private String additionalServices;
 
     @Column(name = "special_requests", columnDefinition = "TEXT")
@@ -96,6 +112,7 @@ public class Booking {
     private String notes;
 
     @Column(name = "status", length = 20)
+    @Builder.Default
     private String status = "PENDING"; // PENDING, CONFIRMED, CANCELLED, COMPLETED
 
     @Column(name = "cancelled_by")
@@ -107,9 +124,6 @@ public class Booking {
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     private String cancellationReason;
 
-    @Column(name = "refund_amount")
-    private Double refundAmount = 0.00;
-
     @Column(name = "confirmed_by")
     private Long confirmedBy;
 
@@ -119,21 +133,12 @@ public class Booking {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "rating")
-    private Double rating;
-
-    @Column(name = "review", columnDefinition = "TEXT")
-    private String review;
-
-    @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
-
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @LastModifiedDate
-    @Column(name = "updated_at")
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Column(name = "deleted_at")

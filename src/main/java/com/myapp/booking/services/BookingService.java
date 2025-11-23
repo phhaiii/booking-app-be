@@ -42,8 +42,10 @@ public class BookingService implements IBookingService {
      */
     @Override
     public BookingResponse createBooking(BookingRequest request, UserPrincipal currentUser) {
-        log.info("Creating booking for user: {}, post: {}, slotIndex: {}, startTime: {}, endTime: {}, bookingDateTime: {}",
-                currentUser.getId(), request.getPostId(), request.getSlotIndex(),
+        log.info("📥 Creating booking for user: {}", currentUser.getId());
+        log.info("📝 Request details - postId: {}, slotIndex: {}, numberOfGuests: {}, specialRequests: '{}'",
+                request.getPostId(), request.getSlotIndex(), request.getNumberOfGuests(), request.getSpecialRequests());
+        log.info("📅 Booking time - startTime: {}, endTime: {}, bookingDateTime: {}",
                 request.getStartTime(), request.getEndTime(), request.getBookingDateTime());
 
         // Validate required fields
@@ -62,6 +64,9 @@ public class BookingService implements IBookingService {
         if (venue.getStatus() != Post.PostStatus.PUBLISHED) {
             throw new BadRequestException("Venue is not available for booking");
         }
+
+        log.info("🏢 Venue info - id: {}, title: '{}', capacity: {}",
+                venue.getId(), venue.getTitle(), venue.getCapacity());
 
         // Normalize booking date
         Date bookingDate = request.getBookingDate();
@@ -136,14 +141,21 @@ public class BookingService implements IBookingService {
         // Validate guest count does not exceed venue capacity
         if (request.getNumberOfGuests() != null && venue.getCapacity() != null
                 && request.getNumberOfGuests() > venue.getCapacity()) {
-            throw new BadRequestException("Guest count exceeds venue capacity");
+            log.error("❌ Guest count validation failed - requested: {}, venue capacity: {}",
+                    request.getNumberOfGuests(), venue.getCapacity());
+            throw new BadRequestException(String.format(
+                    "Guest count (%d) exceeds venue capacity (%d)",
+                    request.getNumberOfGuests(), venue.getCapacity()));
         }
 
-        // Calculate total amount
+        // Calculate total amount - use actual guest count from request
         int guests = request.getNumberOfGuests() != null ? request.getNumberOfGuests() : 1;
         double totalAmount = unitPrice * guests;
         double discount = request.getDiscountAmount() != null ? request.getDiscountAmount() : 0.0;
         double finalAmount = totalAmount - discount;
+
+        log.info("💰 Price calculation - guests: {}, unitPrice: {}, totalAmount: {}, discount: {}, finalAmount: {}",
+                guests, unitPrice, totalAmount, discount, finalAmount);
 
         // Create booking entity
         Booking booking = new Booking();
@@ -160,7 +172,6 @@ public class BookingService implements IBookingService {
         booking.setSlotIndex(slotIndex != null ? slotIndex : 0); // Ensure slotIndex is never null
         booking.setDurationHours(2.0); // Fixed 2-hour slots
         booking.setNumberOfGuests(request.getNumberOfGuests());
-        booking.setNumberOfTables(request.getNumberOfTables());
         booking.setUnitPrice(unitPrice);
         booking.setTotalAmount(totalAmount);
         booking.setDepositAmount(request.getDepositAmount());
@@ -168,11 +179,19 @@ public class BookingService implements IBookingService {
         booking.setFinalAmount(finalAmount);
         booking.setAdditionalServices(request.getAdditionalServices());
         booking.setSpecialRequests(request.getSpecialRequests());
-        booking.setNotes(request.getNotes());
         booking.setStatus("PENDING");
+
+        log.info("💾 About to save booking:");
+        log.info("   - numberOfGuests: {}", booking.getNumberOfGuests());
+        log.info("   - specialRequests: '{}'", booking.getSpecialRequests());
+        log.info("   - totalAmount: {}, finalAmount: {}", booking.getTotalAmount(), booking.getFinalAmount());
 
         // Save booking
         Booking savedBooking = bookingRepository.save(booking);
+
+        log.info("✅ Booking saved successfully with ID: {}", savedBooking.getId());
+        log.info("   - Saved numberOfGuests: {}", savedBooking.getNumberOfGuests());
+        log.info("   - Saved specialRequests: '{}'", savedBooking.getSpecialRequests());
 
         // Increment booking count in Post
         venue.incrementBookingCount();
@@ -287,6 +306,10 @@ public class BookingService implements IBookingService {
                         if (venue.getImages() != null && !venue.getImages().isEmpty()) {
                             response.setVenueImage(venue.getImages().get(0));
                         }
+                        // Ensure venueId is set (fallback to postId if null)
+                        if (response.getVenueId() == null) {
+                            response.setVenueId(booking.getPostId());
+                        }
                     });
 
             return response;
@@ -316,6 +339,10 @@ public class BookingService implements IBookingService {
                     response.setVenueName(venue.getTitle());
                     if (venue.getImages() != null && !venue.getImages().isEmpty()) {
                         response.setVenueImage(venue.getImages().get(0));
+                    }
+                    // Ensure venueId is set (for legacy bookings)
+                    if (response.getVenueId() == null) {
+                        response.setVenueId(booking.getPostId());
                     }
                 });
 
@@ -379,6 +406,10 @@ public class BookingService implements IBookingService {
                         if (venue.getImages() != null && !venue.getImages().isEmpty()) {
                             response.setVenueImage(venue.getImages().get(0));
                         }
+                        // Ensure venueId is set (fallback to postId if null)
+                        if (response.getVenueId() == null) {
+                            response.setVenueId(booking.getPostId());
+                        }
                     });
 
             return response;
@@ -388,7 +419,7 @@ public class BookingService implements IBookingService {
     /**
      * Confirm booking (Vendor/Admin only)
      */
-    public BookingResponse confirmBooking(Long bookingId, UserPrincipal currentUser) {
+    public com.myapp.booking.dtos.responses.BookingConfirmResponse confirmBooking(Long bookingId, UserPrincipal currentUser) {
         log.info("Confirming booking: {}", bookingId);
 
         Booking booking = bookingRepository.findById(bookingId)
@@ -403,8 +434,23 @@ public class BookingService implements IBookingService {
             throw new UnauthorizedException("You are not authorized to confirm this booking");
         }
 
+        // If already confirmed, return the booking (idempotent operation)
+        if ("CONFIRMED".equals(booking.getStatus())) {
+            log.info("Booking {} is already confirmed, returning existing booking", bookingId);
+
+            // Get slot availability for the booking date
+            com.myapp.booking.dtos.responses.SlotAvailabilityResponse slotAvailability =
+                getSlotAvailability(booking.getPostId(), booking.getBookingDate());
+
+            return com.myapp.booking.dtos.responses.BookingConfirmResponse.builder()
+                    .booking(BookingResponse.fromEntity(booking))
+                    .slotAvailability(slotAvailability)
+                    .build();
+        }
+
+        // Only pending bookings can be confirmed
         if (!"PENDING".equals(booking.getStatus())) {
-            throw new BadRequestException("Only pending bookings can be confirmed");
+            throw new BadRequestException("Only pending bookings can be confirmed. Current status: " + booking.getStatus());
         }
 
         booking.setStatus("CONFIRMED");
@@ -414,7 +460,15 @@ public class BookingService implements IBookingService {
 
         log.info("Booking confirmed successfully: {}", bookingId);
 
-        return BookingResponse.fromEntity(confirmedBooking);
+        // Get updated slot availability for the booking date
+        com.myapp.booking.dtos.responses.SlotAvailabilityResponse slotAvailability =
+            getSlotAvailability(confirmedBooking.getPostId(), confirmedBooking.getBookingDate());
+
+        // Return combined response with booking details and slot availability
+        return com.myapp.booking.dtos.responses.BookingConfirmResponse.builder()
+                .booking(BookingResponse.fromEntity(confirmedBooking))
+                .slotAvailability(slotAvailability)
+                .build();
     }
 
     /**
@@ -493,6 +547,10 @@ public class BookingService implements IBookingService {
                         response.setVenueName(venue.getTitle());
                         if (venue.getImages() != null && !venue.getImages().isEmpty()) {
                             response.setVenueImage(venue.getImages().get(0));
+                        }
+                        // Ensure venueId is set (fallback to postId if null)
+                        if (response.getVenueId() == null) {
+                            response.setVenueId(booking.getPostId());
                         }
                     });
 
@@ -637,81 +695,46 @@ public class BookingService implements IBookingService {
         Post venue = postRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
 
-        // Get total available slots for this post
+        // Get total available slots for this post (default: 4)
         Integer totalSlots = venue.getAvailableSlots() != null ? venue.getAvailableSlots() : 4;
 
-        // Count active bookings on this date
-        long bookedCount = bookingRepository.countByPostIdAndBookingDateAndStatusNotIn(
-                postId,
-                bookingDate,
-                java.util.List.of("CANCELLED")
-        );
-
-        Integer availableSlots = totalSlots - (int) bookedCount;
-
-        // Get existing bookings for this date to determine which time slots are taken
+        // Get existing bookings for this date to determine which slots are taken
         List<Booking> existingBookings = bookingRepository.findByPostIdAndBookingDateAndStatusNotIn(
                 postId,
                 bookingDate,
                 java.util.List.of("CANCELLED")
         );
 
-        // Define time slots (10:00-14:00 and 14:00-18:00)
-        java.util.List<com.myapp.booking.dtos.responses.SlotAvailabilityResponse.TimeSlot> timeSlots = new java.util.ArrayList<>();
+        // Build slot info for all 4 time slots (0-3)
+        java.util.List<com.myapp.booking.dtos.responses.SlotAvailabilityResponse.SlotInfo> slots = new java.util.ArrayList<>();
 
-        // Slot 1: 10:00 - 14:00
-        LocalTime slot1Start = LocalTime.of(10, 0);
-        LocalTime slot1End = LocalTime.of(14, 0);
-        boolean slot1Available = existingBookings.stream()
-                .noneMatch(b -> timeSlotsOverlap(
-                        b.getStartTime().toLocalTime(),
-                        b.getEndTime().toLocalTime(),
-                        slot1Start,
-                        slot1End
-                ));
+        for (com.myapp.booking.enums.TimeSlot timeSlot : com.myapp.booking.enums.TimeSlot.values()) {
+            // Check if this slot is already booked
+            boolean isBooked = existingBookings.stream()
+                    .anyMatch(b -> b.getSlotIndex() != null && b.getSlotIndex().equals(timeSlot.getIndex()));
 
-        timeSlots.add(com.myapp.booking.dtos.responses.SlotAvailabilityResponse.TimeSlot.builder()
-                .slotId("MORNING")
-                .startTime(slot1Start)
-                .endTime(slot1End)
-                .isAvailable(slot1Available && availableSlots > 0)
-                .status(slot1Available && availableSlots > 0 ? "AVAILABLE" : "BOOKED")
-                .build());
+            slots.add(com.myapp.booking.dtos.responses.SlotAvailabilityResponse.SlotInfo.builder()
+                    .slotIndex(timeSlot.getIndex())
+                    .startTime(timeSlot.getStartTime())
+                    .endTime(timeSlot.getEndTime())
+                    .displayText(timeSlot.getDisplayText())
+                    .isAvailable(!isBooked)
+                    .status(isBooked ? "BOOKED" : "AVAILABLE")
+                    .build());
+        }
 
-        // Slot 2: 14:00 - 18:00
-        LocalTime slot2Start = LocalTime.of(14, 0);
-        LocalTime slot2End = LocalTime.of(18, 0);
-        boolean slot2Available = existingBookings.stream()
-                .noneMatch(b -> timeSlotsOverlap(
-                        b.getStartTime().toLocalTime(),
-                        b.getEndTime().toLocalTime(),
-                        slot2Start,
-                        slot2End
-                ));
-
-        timeSlots.add(com.myapp.booking.dtos.responses.SlotAvailabilityResponse.TimeSlot.builder()
-                .slotId("AFTERNOON")
-                .startTime(slot2Start)
-                .endTime(slot2End)
-                .isAvailable(slot2Available && availableSlots > 0)
-                .status(slot2Available && availableSlots > 0 ? "AVAILABLE" : "BOOKED")
-                .build());
+        // Count how many slots are actually booked
+        long bookedCount = existingBookings.size();
+        Integer availableSlots = totalSlots - (int) bookedCount;
 
         return com.myapp.booking.dtos.responses.SlotAvailabilityResponse.builder()
                 .postId(postId)
                 .postTitle(venue.getTitle())
                 .bookingDate(bookingDate.toString())
                 .totalSlots(totalSlots)
-                .availableSlots(availableSlots)
+                .availableSlots(availableSlots >= 0 ? availableSlots : 0)
                 .bookedSlots((int) bookedCount)
-                .timeSlots(timeSlots)
+                .slots(slots)
                 .build();
-    }
-
-    /**
-     * Helper method to check if two time ranges overlap
-     */
-    private boolean timeSlotsOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
-        return !start1.isAfter(end2) && !start2.isAfter(end1);
     }
 }

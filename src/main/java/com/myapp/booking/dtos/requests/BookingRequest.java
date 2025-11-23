@@ -43,15 +43,12 @@ public class BookingRequest {
     @Max(value = 3, message = "Slot index must be between 0 and 3")
     private Integer slotIndex;
 
-    // BACKWARD COMPATIBILITY: Accept flexible time inputs (will be converted to slots)
     private String startTime;
 
     private String endTime;
 
-    @Min(value = 1, message = "Number of guests must be at least 1")
-    private Integer numberOfGuests = 1;
-
-    private Integer numberOfTables;
+    @JsonAlias({"numberOfGuests", "number_of_guests", "guestCount"})
+    private Integer numberOfGuests;
 
     // Optional: if null, service will use post.price
     @DecimalMin(value = "0.0", message = "Unit price must be positive")
@@ -65,11 +62,9 @@ public class BookingRequest {
 
     private String additionalServices;
 
+    @JsonAlias({"specialRequests", "special_requests"})
     @Size(max = 1000, message = "Special requests cannot exceed 1000 characters")
     private String specialRequests;
-
-    @Size(max = 1000, message = "Notes cannot exceed 1000 characters")
-    private String notes;
 
     // BACKWARD COMPATIBILITY: Optional duration hint for old API clients
     @Min(1)

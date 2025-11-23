@@ -34,17 +34,32 @@ public class Post {
     @Column(name = "content", columnDefinition = "LONGTEXT")
     private String content;
 
-    @Column(name = "location", length = 255)
-    private String location;
-
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "currency", length = 3)
+    @Builder.Default
+    private String currency = "VND";
+
+    @Column(name = "location", length = 255)
+    private String location;
 
     @Column(name = "capacity")
     private Integer capacity;
 
     @Column(name = "style", length = 50)
     private String style;
+
+    @Column(name = "is_available")
+    @Builder.Default
+    private Boolean isAvailable = true;
+
+    @Column(name = "rating", precision = 2, scale = 1)
+    @Builder.Default
+    private BigDecimal rating = BigDecimal.ZERO;
+
+    @Column(name = "working_days", columnDefinition = "LONGTEXT")
+    private String workingDays; // JSON array of working days
 
     @Column(name = "available_slots")
     @Builder.Default

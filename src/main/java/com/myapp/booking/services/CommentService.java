@@ -44,7 +44,7 @@ public class CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    @Value("${app.upload.dir:uploads}")
+    @Value("${file.upload-dir:uploads}")
     private String uploadDir;
 
     // ═══════════════════════════════════════════════════════════════

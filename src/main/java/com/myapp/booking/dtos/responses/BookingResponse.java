@@ -22,6 +22,7 @@ public class BookingResponse {
     private String customerPhone;
     private String customerEmail;
     private Long postId;
+    private Long venueId;
     private Long vendorId;
     private String venueName;
     private String venueImage;
@@ -42,12 +43,25 @@ public class BookingResponse {
     private String specialRequests;
     private String notes;
     private String status;
+
+    // Cancellation/Rejection info
+    private Long cancelledBy;
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
+
+    // Confirmation info
+    private Long confirmedBy;
+    private LocalDateTime confirmedAt;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
 
     // Convert from Entity to DTO
     public static BookingResponse fromEntity(Booking booking) {
+        // Ensure venueId is set - fallback to postId if null (for legacy bookings)
+        Long venueId = booking.getVenueId() != null ? booking.getVenueId() : booking.getPostId();
+        
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingCode(booking.getBookingCode())
@@ -56,6 +70,7 @@ public class BookingResponse {
                 .customerPhone(booking.getCustomerPhone())
                 .customerEmail(booking.getCustomerEmail())
                 .postId(booking.getPostId())
+                .venueId(venueId)
                 .vendorId(booking.getVendorId())
                 .bookingDate(booking.getBookingDate())
                 .startTime(booking.getStartTime())
@@ -74,6 +89,11 @@ public class BookingResponse {
                 .specialRequests(booking.getSpecialRequests())
                 .notes(booking.getNotes())
                 .status(booking.getStatus())
+                .cancelledBy(booking.getCancelledBy())
+                .cancelledAt(booking.getCancelledAt())
+                .cancellationReason(booking.getCancellationReason())
+                .confirmedBy(booking.getConfirmedBy())
+                .confirmedAt(booking.getConfirmedAt())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();
